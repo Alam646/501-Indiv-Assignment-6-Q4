@@ -20,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.example.indivassignment6q4.ui.theme.IndivAssignment6Q4Theme
@@ -40,13 +42,24 @@ class MainActivity : ComponentActivity() {
 fun GameScreen() {
     val context = LocalContext.current
 
-    // Ball State (Start near middle)
-    var ballPos by remember { mutableStateOf(Offset(500f, 800f)) }
+    // Ball State (Start near top-left)
+    var ballPos by remember { mutableStateOf(Offset(100f, 100f)) }
     val ballRadius = 40f
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val maxW = constraints.maxWidth.toFloat()
         val maxH = constraints.maxHeight.toFloat()
+
+        // Define Maze Walls (Rectangles)
+        // Create a simple layout with a few barriers
+        val walls = remember(maxW, maxH) {
+            listOf(
+                Rect(offset = Offset(0f, 300f), size = Size(600f, 50f)),     // Top horizontal
+                Rect(offset = Offset(maxW - 600f, 800f), size = Size(600f, 50f)), // Middle horizontal
+                Rect(offset = Offset(300f, 1200f), size = Size(50f, 400f)),   // Vertical barrier
+                Rect(offset = Offset(0f, 1800f), size = Size(500f, 50f))      // Bottom horizontal
+            )
+        }
 
         // Sensor Logic
         DisposableEffect(Unit) {
@@ -58,21 +71,50 @@ fun GameScreen() {
                     event?.let {
                         val x = it.values[0]
                         val y = it.values[1]
+                        val speed = 8f
 
-                        // Speed Multiplier
-                        val speed = 8f 
-
-                        // Calculate new position
-                        // X: Tilting right (negative sensor X) -> Move Right (+ screen X)
-                        // Y: Tilting top-down (positive sensor Y) -> Move Down (+ screen Y)
+                        // Calculate proposed new position
                         var newX = ballPos.x - (x * speed)
                         var newY = ballPos.y + (y * speed)
 
-                        // Clamp values to keep ball on screen
+                        // 1. Screen Bounds Check
                         newX = newX.coerceIn(ballRadius, maxW - ballRadius)
                         newY = newY.coerceIn(ballRadius, maxH - ballRadius)
 
-                        ballPos = Offset(newX, newY)
+                        // 2. Wall Collision Check
+                        // We check X and Y separately to allow "sliding" along walls
+                        
+                        // Check X movement
+                        var collidesX = false
+                        val ballRectX = Rect(
+                            center = Offset(newX, ballPos.y),
+                            radius = ballRadius
+                        )
+                        for (wall in walls) {
+                            if (ballRectX.overlaps(wall)) {
+                                collidesX = true
+                                break
+                            }
+                        }
+                        if (!collidesX) {
+                            ballPos = ballPos.copy(x = newX)
+                        }
+
+                        // Check Y movement
+                        var collidesY = false
+                        val ballRectY = Rect(
+                            center = Offset(ballPos.x, newY),
+                            radius = ballRadius
+                        )
+                        for (wall in walls) {
+                            if (ballRectY.overlaps(wall)) {
+                                collidesY = true
+                                break
+                            }
+                        }
+                        if (!collidesY) {
+                            ballPos = ballPos.copy(y = newY)
+                        }
                     }
                 }
 
@@ -91,6 +133,15 @@ fun GameScreen() {
         }
 
         Canvas(modifier = Modifier.fillMaxSize()) {
+            // Draw Walls
+            for (wall in walls) {
+                drawRect(
+                    color = Color.DarkGray,
+                    topLeft = wall.topLeft,
+                    size = wall.size
+                )
+            }
+
             // Draw Ball
             drawCircle(
                 color = Color.Blue,
