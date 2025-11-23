@@ -14,8 +14,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.InAs6Q4">
         <activity
-            android:name=".MainActivity"
+            android:name="com.example.indivassignment6q4.MainActivity"
             android:exported="true"
+            android:screenOrientation="portrait"
             android:label="@string/app_name"
             android:theme="@style/Theme.InAs6Q4">
             <intent-filter>
